@@ -50,16 +50,23 @@ public class ProfileTriggerHelper extends BroadcastReceiver {
     private IntentFilter mIntentFilter;
     private boolean mFilterRegistered = false;
 
-    private ContentObserver mSettingsObserver = new ContentObserver(new Handler()) {
+    private class SettingsObserver extends ContentObserver {
+        public SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
         @Override
         public void onChange(boolean selfChange) {
             updateEnabled();
         }
-    };
+    }
+    private final ContentObserver mSettingsObserver;
 
-    public ProfileTriggerHelper(Context context, ProfileManagerService profileManagerService) {
+    public ProfileTriggerHelper(Context context, Handler handler,
+            ProfileManagerService profileManagerService) {
         mContext = context;
         mManagerService = profileManagerService;
+        mSettingsObserver = new SettingsObserver(handler);
 
         mWifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
         mLastConnectedSSID = getActiveSSID();
@@ -126,7 +133,7 @@ public class ProfileTriggerHelper extends BroadcastReceiver {
 
     private void checkTriggers(int type, String id, int newState) {
         for (Profile p : mManagerService.getProfileList()) {
-            if (newState != p.getTrigger(type, id)) {
+            if (newState != p.getTriggerState(type, id)) {
                 continue;
             }
 

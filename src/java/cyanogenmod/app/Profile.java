@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 The CyanogenMod Project
+ * Copyright (C) 2015 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,6 @@
 
 package cyanogenmod.app;
 
-import android.app.AirplaneModeSettings;
-import android.app.BrightnessSettings;
-import android.app.ConnectionSettings;
-import android.app.RingModeSettings;
-import android.app.StreamSettings;
 import android.content.Context;
 import android.media.AudioManager;
 import android.os.Parcel;
@@ -30,6 +25,15 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
+
+import com.android.internal.policy.IKeyguardService;
+import cyanogenmod.os.Build;
+import cyanogenmod.profiles.AirplaneModeSettings;
+import cyanogenmod.profiles.BrightnessSettings;
+import cyanogenmod.profiles.ConnectionSettings;
+import cyanogenmod.profiles.LockSettings;
+import cyanogenmod.profiles.RingModeSettings;
+import cyanogenmod.profiles.StreamSettings;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -44,7 +48,11 @@ import java.util.Map.Entry;
 import java.util.UUID;
 
 /**
- * @hide
+ * A class that represents a device profile.
+ *
+ * A {@link Profile} can serve a multitude of purposes, allowing the creator(user)
+ * to set overrides for streams, triggers, screen lock, brightness, various other
+ * settings.
  */
 public final class Profile implements Parcelable, Comparable {
 
@@ -68,10 +76,6 @@ public final class Profile implements Parcelable, Comparable {
 
     private int mProfileType;
 
-    private static final int CONDITIONAL_TYPE = 1;
-
-    private static final int TOGGLE_TYPE = 0;
-
     private Map<Integer, StreamSettings> streams = new HashMap<Integer, StreamSettings>();
 
     private Map<String, ProfileTrigger> mTriggers = new HashMap<String, ProfileTrigger>();
@@ -84,54 +88,120 @@ public final class Profile implements Parcelable, Comparable {
 
     private BrightnessSettings mBrightness = new BrightnessSettings();
 
-    private int mScreenLockMode = LockMode.DEFAULT;
+    private LockSettings mScreenLockMode = new LockSettings();
 
     private int mExpandedDesktopMode = ExpandedDesktopMode.DEFAULT;
 
     private int mDozeMode = DozeMode.DEFAULT;
 
-    /** @hide */
+    /**
+     * Lock modes of a device
+     */
     public static class LockMode {
+        /** Represents a default state lock mode (user choice) */
         public static final int DEFAULT = 0;
+        /** Represents an insecure state lock mode, where the device has no security screen */
         public static final int INSECURE = 1;
+        /** Represents a disabled state lock mode, where the devices lock screen can be removed */
         public static final int DISABLE = 2;
     }
 
-    /** @hide */
+    /**
+     * Expanded desktop modes available on a device
+     */
     public static class ExpandedDesktopMode {
+        /** Represents a default state expanded desktop mode (user choice) */
         public static final int DEFAULT = 0;
+        /** Represents an enabled expanded desktop mode */
         public static final int ENABLE = 1;
+        /** Represents a disabled expanded desktop mode */
         public static final int DISABLE = 2;
     }
 
-    /** @hide */
+    /**
+     * Doze modes available on a device
+     */
     public static class DozeMode {
+        /** Represents a default Doze mode (user choice) */
         public static final int DEFAULT = 0;
+        /** Represents an enabled Doze mode */
         public static final int ENABLE = 1;
+        /** Represents an disabled Doze mode */
         public static final int DISABLE = 2;
     }
 
-    /** @hide */
+    /**
+     * Available trigger types on the device, usually hardware
+     */
     public static class TriggerType {
+        /** Represents a WiFi trigger type */
         public static final int WIFI = 0;
+        /** Represents a Bluetooth trigger type */
         public static final int BLUETOOTH = 1;
     }
 
-    /** @hide */
+    /**
+     * Various trigger states associated with a {@link TriggerType}
+     */
     public static class TriggerState {
+        /** A {@link TriggerState) for when the {@link TriggerType} connects */
         public static final int ON_CONNECT = 0;
+        /** A {@link TriggerState) for when the {@link TriggerType} disconnects */
         public static final int ON_DISCONNECT = 1;
+        /** A {@link TriggerState) for when the {@link TriggerType} is disabled */
         public static final int DISABLED = 2;
+        /**
+         * A {@link TriggerState) for when the {@link TriggerType#BLUETOOTH}
+         * connects for A2DP session
+         */
         public static final int ON_A2DP_CONNECT = 3;
+        /**
+         * A {@link TriggerState) for when the {@link TriggerType#BLUETOOTH}
+         * disconnects from A2DP session
+         */
         public static final int ON_A2DP_DISCONNECT = 4;
     }
 
+    /**
+     * A {@link Profile} type
+     */
+    public static class Type {
+        /** Profile type which represents a toggle {@link Profile} */
+        public static final int TOGGLE = 0;
+        /** Profile type which represents a conditional {@link Profile} */
+        public static final int CONDITIONAL = 1;
+    }
+
+    /**
+     * A {@link ProfileTrigger} is a {@link TriggerType} which can be queried from the OS
+     */
     public static class ProfileTrigger implements Parcelable {
         private int mType;
         private String mId;
         private String mName;
         private int mState;
 
+
+        /**
+         * Construct a {@link ProfileTrigger} based on its type {@link Profile.TriggerType} and if
+         * the trigger should fire on a {@link Profile.TriggerState} change.
+         *
+         * Example:
+         * <pre class="prettyprint">
+         *   triggerId = trigger.getSSID();                  // Use the AP's SSID as identifier
+         *   triggerName = trigger.getTitle();               // Use the AP's name as the trigger name
+         *   triggerType = Profile.TriggerType.WIFI;         // This is a wifi trigger
+         *   triggerState = Profile.TriggerState.ON_CONNECT; // On Connect of this, trigger
+         *
+         *   Profile.ProfileTrigger profileTrigger =
+         *           new Profile.ProfileTrigger(triggerType, triggerId, triggerState, triggerName);
+         * </pre>
+         *
+         * @param type a {@link Profile.TriggerType}
+         * @param id an identifier for the ProfileTrigger
+         * @param state {@link Profile.TriggerState} depending on the TriggerType
+         * @param name an identifying name for the ProfileTrigger
+         */
         public ProfileTrigger(int type, String id, int state, String name) {
             mType = type;
             mId = id;
@@ -140,18 +210,47 @@ public final class Profile implements Parcelable, Comparable {
         }
 
         private ProfileTrigger(Parcel in) {
-            mType = in.readInt();
-            mId = in.readString();
-            mState = in.readInt();
-            mName = in.readString();
+            // Read parcelable version, make sure to define explicit changes
+            // within {@link Build.PARCELABLE_VERSION);
+            int parcelableVersion = in.readInt();
+            int parcelableSize = in.readInt();
+            int startPosition = in.dataPosition();
+
+            // Pattern here is that all new members should be added to the end of
+            // the writeToParcel method. Then we step through each version, until the latest
+            // API release to help unravel this parcel
+            if (parcelableVersion >= Build.CM_VERSION_CODES.BOYSENBERRY) {
+                mType = in.readInt();
+                mId = in.readString();
+                mState = in.readInt();
+                mName = in.readString();
+            }
+
+            in.setDataPosition(startPosition + parcelableSize);
         }
 
         @Override
         public void writeToParcel(Parcel dest, int flags) {
+            // Write parcelable version, make sure to define explicit changes
+            // within {@link Build.PARCELABLE_VERSION);
+            dest.writeInt(Build.PARCELABLE_VERSION);
+
+            // Inject a placeholder that will store the parcel size from this point on
+            // (not including the size itself).
+            int sizePosition = dest.dataPosition();
+            dest.writeInt(0);
+            int startPosition = dest.dataPosition();
+
             dest.writeInt(mType);
             dest.writeString(mId);
             dest.writeInt(mState);
             dest.writeString(mName);
+
+            // Go back and write size
+            int parcelableSize = dest.dataPosition() - startPosition;
+            dest.setDataPosition(sizePosition);
+            dest.writeInt(parcelableSize);
+            dest.setDataPosition(startPosition + parcelableSize);
         }
 
         @Override
@@ -159,22 +258,41 @@ public final class Profile implements Parcelable, Comparable {
             return 0;
         }
 
+        /**
+         * Get the {@link ProfileTrigger} {@link TriggerType}
+         * @return {@link TriggerType}
+         */
         public int getType() {
             return mType;
         }
 
+        /**
+         * Get the name associated with the {@link ProfileTrigger}
+         * @return a string name
+         */
         public String getName() {
             return mName;
         }
 
+        /**
+         * Get the id associated with the {@link ProfileTrigger}
+         * @return an string identifier
+         */
         public String getId() {
             return mId;
         }
 
+        /**
+         * Get the state associated with the {@link ProfileTrigger}
+         * @return an integer indicating the state
+         */
         public int getState() {
             return mState;
         }
 
+        /**
+         * @hide
+         */
         public void getXmlString(StringBuilder builder, Context context) {
             final String itemType = mType == TriggerType.WIFI ? "wifiAP" : "btDevice";
 
@@ -193,6 +311,9 @@ public final class Profile implements Parcelable, Comparable {
             builder.append(">\n");
         }
 
+        /**
+         * @hide
+         */
         public static ProfileTrigger fromXml(XmlPullParser xpp, Context context) {
             final String name = xpp.getName();
             final int type;
@@ -219,6 +340,9 @@ public final class Profile implements Parcelable, Comparable {
             return type == TriggerType.WIFI ? "ssid" : "address";
         }
 
+        /**
+         * @hide
+         */
         public static final Parcelable.Creator<ProfileTrigger> CREATOR
                 = new Parcelable.Creator<ProfileTrigger>() {
             public ProfileTrigger createFromParcel(Parcel in) {
@@ -244,16 +368,16 @@ public final class Profile implements Parcelable, Comparable {
         }
     };
 
-    /** @hide */
     public Profile(String name) {
         this(name, -1, UUID.randomUUID());
     }
 
-    private Profile(String name, int nameResId, UUID uuid) {
+    /** @hide */
+    public Profile(String name, int nameResId, UUID uuid) {
         mName = name;
         mNameResId = nameResId;
         mUuid = uuid;
-        mProfileType = TOGGLE_TYPE;  //Default to toggle type
+        mProfileType = Type.TOGGLE;  //Default to toggle type
         mDirty = false;
     }
 
@@ -261,7 +385,13 @@ public final class Profile implements Parcelable, Comparable {
         readFromParcel(in);
     }
 
-    public int getTrigger(int type, String id) {
+    /**
+     * Get the {@link TriggerState} for a {@link ProfileTrigger} with a given id
+     * @param type {@link TriggerType}
+     * @param id string id of {@link ProfileTrigger}
+     * @return {@link TriggerState}
+     */
+    public int getTriggerState(int type, String id) {
         ProfileTrigger trigger = id != null ? mTriggers.get(id) : null;
         if (trigger != null) {
             return trigger.mState;
@@ -269,6 +399,11 @@ public final class Profile implements Parcelable, Comparable {
         return TriggerState.DISABLED;
     }
 
+    /**
+     * Get all the {@link ProfileTrigger}s for a given {@link TriggerType}
+     * @param type {@link TriggerType}
+     * @return an array list of {@link ProfileTrigger}s
+     */
     public ArrayList<ProfileTrigger> getTriggersFromType(int type) {
         ArrayList<ProfileTrigger> result = new ArrayList<ProfileTrigger>();
         for (Entry<String, ProfileTrigger> profileTrigger:  mTriggers.entrySet()) {
@@ -280,6 +415,10 @@ public final class Profile implements Parcelable, Comparable {
         return result;
     }
 
+    /**
+     * Set a custom {@link ProfileTrigger}
+     * @hide
+     */
     public void setTrigger(int type, String id, int state, String name) {
         if (id == null
                 || type < TriggerType.WIFI || type > TriggerType.BLUETOOTH
@@ -302,6 +441,14 @@ public final class Profile implements Parcelable, Comparable {
         mDirty = true;
     }
 
+    /**
+     * Set a {@link ProfileTrigger} on the {@link Profile}
+     * @param trigger a {@link ProfileTrigger}
+     */
+    public void setTrigger(ProfileTrigger trigger) {
+        setTrigger(trigger.getType(), trigger.getId(), trigger.getState(), trigger.getName());
+    }
+
     public int compareTo(Object obj) {
         Profile tmp = (Profile) obj;
         if (mName.compareTo(tmp.mName) < 0) {
@@ -312,20 +459,32 @@ public final class Profile implements Parcelable, Comparable {
         return 0;
     }
 
-    /** @hide */
-    public void addProfileGroup(ProfileGroup value) {
-        if (value.isDefaultGroup()) {
+    /**
+     * Add a {@link ProfileGroup} to the {@link Profile}
+     * @param profileGroup
+     * @hide
+     */
+    public void addProfileGroup(ProfileGroup profileGroup) {
+        if (profileGroup == null) {
+            return;
+        }
+
+        if (profileGroup.isDefaultGroup()) {
             /* we must not have more than one default group */
             if (mDefaultGroup != null) {
                 return;
             }
-            mDefaultGroup = value;
+            mDefaultGroup = profileGroup;
         }
-        profileGroups.put(value.getUuid(), value);
+        profileGroups.put(profileGroup.getUuid(), profileGroup);
         mDirty = true;
     }
 
-    /** @hide */
+    /**
+     * Remove a {@link ProfileGroup} with a given {@link UUID}
+     * @param uuid
+     * @hide
+     */
     public void removeProfileGroup(UUID uuid) {
         if (!profileGroups.get(uuid).isDefaultGroup()) {
             profileGroups.remove(uuid);
@@ -334,14 +493,30 @@ public final class Profile implements Parcelable, Comparable {
         }
     }
 
+    /**
+     * Get {@link ProfileGroup}s associated with the {@link Profile}
+     * @return {@link ProfileGroup[]}
+     * @hide
+     */
     public ProfileGroup[] getProfileGroups() {
         return profileGroups.values().toArray(new ProfileGroup[profileGroups.size()]);
     }
 
+    /**
+     * Get a {@link ProfileGroup} with a given {@link UUID}
+     * @param uuid
+     * @return a {@link ProfileGroup}
+     * @hide
+     */
     public ProfileGroup getProfileGroup(UUID uuid) {
         return profileGroups.get(uuid);
     }
 
+    /**
+     * Get the default {@link ProfileGroup} associated with the {@link Profile}
+     * @return the default {@link ProfileGroup}
+     * @hide
+     */
     public ProfileGroup getDefaultGroup() {
         return mDefaultGroup;
     }
@@ -355,98 +530,231 @@ public final class Profile implements Parcelable, Comparable {
     /** @hide */
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(mName);
-        dest.writeInt(mNameResId);
-        new ParcelUuid(mUuid).writeToParcel(dest, 0);
-        ArrayList<ParcelUuid> uuids = new ArrayList<ParcelUuid>(mSecondaryUuids.size());
-        for (UUID u : mSecondaryUuids) {
-            uuids.add(new ParcelUuid(u));
+        // Write parcelable version, make sure to define explicit changes
+        // within {@link Build.PARCELABLE_VERSION);
+        dest.writeInt(Build.PARCELABLE_VERSION);
+
+        // Inject a placeholder that will store the parcel size from this point on
+        // (not including the size itself).
+        int sizePosition = dest.dataPosition();
+        dest.writeInt(0);
+        int startPosition = dest.dataPosition();
+
+        // === BOYSENBERRY ===
+        if (!TextUtils.isEmpty(mName)) {
+            dest.writeInt(1);
+            dest.writeString(mName);
+        } else {
+            dest.writeInt(0);
         }
-        dest.writeParcelableArray(uuids.toArray(new Parcelable[uuids.size()]), flags);
+        if (mNameResId != 0) {
+            dest.writeInt(1);
+            dest.writeInt(mNameResId);
+        } else {
+            dest.writeInt(0);
+        }
+        if (mUuid != null) {
+            dest.writeInt(1);
+            new ParcelUuid(mUuid).writeToParcel(dest, 0);
+        } else {
+            dest.writeInt(0);
+        }
+        if (mSecondaryUuids != null && !mSecondaryUuids.isEmpty()) {
+            ArrayList<ParcelUuid> uuids = new ArrayList<ParcelUuid>(mSecondaryUuids.size());
+            for (UUID u : mSecondaryUuids) {
+                uuids.add(new ParcelUuid(u));
+            }
+            dest.writeInt(1);
+            dest.writeParcelableArray(uuids.toArray(new Parcelable[uuids.size()]), flags);
+        } else {
+            dest.writeInt(0);
+        }
         dest.writeInt(mStatusBarIndicator ? 1 : 0);
         dest.writeInt(mProfileType);
         dest.writeInt(mDirty ? 1 : 0);
-        dest.writeParcelableArray(
-                profileGroups.values().toArray(new Parcelable[profileGroups.size()]), flags);
-        dest.writeParcelableArray(
-                streams.values().toArray(new Parcelable[streams.size()]), flags);
-        dest.writeParcelableArray(
-                connections.values().toArray(new Parcelable[connections.size()]), flags);
-        dest.writeParcelable(mRingMode, flags);
-        dest.writeParcelable(mAirplaneMode, flags);
-        dest.writeParcelable(mBrightness, flags);
-        dest.writeInt(mScreenLockMode);
-        dest.writeMap(mTriggers);
+        if (profileGroups != null && !profileGroups.isEmpty()) {
+            dest.writeInt(1);
+            dest.writeTypedArray(profileGroups.values().toArray(
+                    new ProfileGroup[0]), flags);
+        } else {
+            dest.writeInt(0);
+        }
+        if (streams != null && !streams.isEmpty()) {
+            dest.writeInt(1);
+            dest.writeTypedArray(streams.values().toArray(
+                    new StreamSettings[0]), flags);
+        } else {
+            dest.writeInt(0);
+        }
+        if (connections != null && !connections.isEmpty()) {
+            dest.writeInt(1);
+            dest.writeTypedArray(connections.values().toArray(
+                    new ConnectionSettings[0]), flags);
+        } else {
+            dest.writeInt(0);
+        }
+        if (mRingMode != null) {
+            dest.writeInt(1);
+            mRingMode.writeToParcel(dest, 0);
+        } else {
+            dest.writeInt(0);
+        }
+        if (mAirplaneMode != null) {
+            dest.writeInt(1);
+            mAirplaneMode.writeToParcel(dest, 0);
+        } else {
+            dest.writeInt(0);
+        }
+        if (mBrightness != null) {
+            dest.writeInt(1);
+            mBrightness.writeToParcel(dest, 0);
+        } else {
+            dest.writeInt(0);
+        }
+        if (mScreenLockMode != null) {
+            dest.writeInt(1);
+            mScreenLockMode.writeToParcel(dest, 0);
+        } else {
+            dest.writeInt(0);
+        }
+        dest.writeTypedArray(mTriggers.values().toArray(new ProfileTrigger[0]), flags);
         dest.writeInt(mExpandedDesktopMode);
         dest.writeInt(mDozeMode);
+
+        // Go back and write size
+        int parcelableSize = dest.dataPosition() - startPosition;
+        dest.setDataPosition(sizePosition);
+        dest.writeInt(parcelableSize);
+        dest.setDataPosition(startPosition + parcelableSize);
     }
 
     /** @hide */
     public void readFromParcel(Parcel in) {
-        mName = in.readString();
-        mNameResId = in.readInt();
-        mUuid = ParcelUuid.CREATOR.createFromParcel(in).getUuid();
-        for (Parcelable parcel : in.readParcelableArray(null)) {
-            ParcelUuid u = (ParcelUuid) parcel;
-            mSecondaryUuids.add(u.getUuid());
-        }
-        mStatusBarIndicator = (in.readInt() == 1);
-        mProfileType = in.readInt();
-        mDirty = (in.readInt() == 1);
-        for (Parcelable group : in.readParcelableArray(null)) {
-            ProfileGroup grp = (ProfileGroup) group;
-            profileGroups.put(grp.getUuid(), grp);
-            if (grp.isDefaultGroup()) {
-                mDefaultGroup = grp;
+        // Read parcelable version, make sure to define explicit changes
+        // within {@link Build.PARCELABLE_VERSION);
+        int parcelableVersion = in.readInt();
+        int parcelableSize = in.readInt();
+        int startPosition = in.dataPosition();
+
+        // Pattern here is that all new members should be added to the end of
+        // the writeToParcel method. Then we step through each version, until the latest
+        // API release to help unravel this parcel
+        if (parcelableVersion >= Build.CM_VERSION_CODES.BOYSENBERRY) {
+            if (in.readInt() != 0) {
+                mName = in.readString();
             }
+            if (in.readInt() != 0) {
+                mNameResId = in.readInt();
+            }
+            if (in.readInt() != 0) {
+                mUuid = ParcelUuid.CREATOR.createFromParcel(in).getUuid();
+            }
+            if (in.readInt() != 0) {
+                for (Parcelable parcel : in.readParcelableArray(null)) {
+                    ParcelUuid u = (ParcelUuid) parcel;
+                    mSecondaryUuids.add(u.getUuid());
+                }
+            }
+            mStatusBarIndicator = (in.readInt() == 1);
+            mProfileType = in.readInt();
+            mDirty = (in.readInt() == 1);
+            if (in.readInt() != 0) {
+                for (ProfileGroup group : in.createTypedArray(ProfileGroup.CREATOR)) {
+                    profileGroups.put(group.getUuid(), group);
+                    if (group.isDefaultGroup()) {
+                        mDefaultGroup = group;
+                    }
+                }
+            }
+            if (in.readInt() != 0) {
+                for (StreamSettings stream : in.createTypedArray(StreamSettings.CREATOR)) {
+                    streams.put(stream.getStreamId(), stream);
+                }
+            }
+            if (in.readInt() != 0) {
+                for (ConnectionSettings connection :
+                        in.createTypedArray(ConnectionSettings.CREATOR)) {
+                    connections.put(connection.getConnectionId(), connection);
+                }
+            }
+            if (in.readInt() != 0) {
+                mRingMode = RingModeSettings.CREATOR.createFromParcel(in);
+            }
+            if (in.readInt() != 0) {
+                mAirplaneMode = AirplaneModeSettings.CREATOR.createFromParcel(in);
+            }
+            if (in.readInt() != 0) {
+                mBrightness = BrightnessSettings.CREATOR.createFromParcel(in);
+            }
+            if (in.readInt() != 0) {
+                mScreenLockMode = LockSettings.CREATOR.createFromParcel(in);
+            }
+            for (ProfileTrigger trigger : in.createTypedArray(ProfileTrigger.CREATOR)) {
+                mTriggers.put(trigger.mId, trigger);
+            }
+            mExpandedDesktopMode = in.readInt();
+            mDozeMode = in.readInt();
         }
-        for (Parcelable parcel : in.readParcelableArray(null)) {
-            StreamSettings stream = (StreamSettings) parcel;
-            streams.put(stream.getStreamId(), stream);
-        }
-        for (Parcelable parcel : in.readParcelableArray(null)) {
-            ConnectionSettings connection = (ConnectionSettings) parcel;
-            connections.put(connection.getConnectionId(), connection);
-        }
-        mRingMode = (RingModeSettings) in.readParcelable(null);
-        mAirplaneMode = (AirplaneModeSettings) in.readParcelable(null);
-        mBrightness = (BrightnessSettings) in.readParcelable(null);
-        mScreenLockMode = in.readInt();
-        in.readMap(mTriggers, null);
-        mExpandedDesktopMode = in.readInt();
-        mDozeMode = in.readInt();
+
+        in.setDataPosition(startPosition + parcelableSize);
     }
 
+    /**
+     * Get the name associated with the {@link Profile}
+     * @return a string name of the profile
+     */
     public String getName() {
         return mName;
     }
 
-    /** @hide */
+    /**
+     * Set a name for the {@link Profile}
+     * @param name a string for the {@link Profile}
+     */
     public void setName(String name) {
         mName = name;
         mNameResId = -1;
         mDirty = true;
     }
 
+    /**
+     * Get the {@link Type} of the {@link Profile}
+     * @return
+     */
     public int getProfileType() {
         return mProfileType;
     }
 
-    /** @hide */
+    /**
+     * Set the {@link Type} for the {@link Profile}
+     * @param type a type of profile
+     */
     public void setProfileType(int type) {
         mProfileType = type;
         mDirty = true;
     }
 
+    /**
+     * Get the {@link UUID} associated with the {@link Profile}
+     * @return the uuid for the profile
+     */
     public UUID getUuid() {
         if (this.mUuid == null) this.mUuid = UUID.randomUUID();
         return this.mUuid;
     }
 
+    /**
+     * Get the secondary {@link UUID}s for the {@link Profile}
+     * @return the secondary uuids for the Profile
+     */
     public UUID[] getSecondaryUuids() {
         return mSecondaryUuids.toArray(new UUID[mSecondaryUuids.size()]);
     }
 
+    /**
+     * Set a list of secondary {@link UUID}s for the {@link Profile}
+     * @param uuids
+     */
     public void setSecondaryUuids(List<UUID> uuids) {
         mSecondaryUuids.clear();
         if (uuids != null) {
@@ -455,6 +763,10 @@ public final class Profile implements Parcelable, Comparable {
         }
     }
 
+    /**
+     * Add a secondary {@link UUID} to the {@link Profile}
+     * @param uuid
+     */
     public void addSecondaryUuid(UUID uuid) {
         if (uuid != null) {
             mSecondaryUuids.add(uuid);
@@ -462,50 +774,83 @@ public final class Profile implements Parcelable, Comparable {
         }
     }
 
+    /**
+     * @hide
+     */
     public boolean getStatusBarIndicator() {
         return mStatusBarIndicator;
     }
 
+    /**
+     * @hide
+     */
     public void setStatusBarIndicator(boolean newStatusBarIndicator) {
         mStatusBarIndicator = newStatusBarIndicator;
         mDirty = true;
     }
 
+    /**
+     * Check if the given {@link Profile} is a {@link Type#CONDITIONAL}
+     * @return true if conditional
+     */
     public boolean isConditionalType() {
-        return(mProfileType == CONDITIONAL_TYPE ? true : false);
+        return(mProfileType == Type.CONDITIONAL ? true : false);
     }
 
+    /**
+     * @hide
+     */
     public void setConditionalType() {
-        mProfileType = CONDITIONAL_TYPE;
+        mProfileType = Type.CONDITIONAL;
         mDirty = true;
     }
 
+    /**
+     * Get the {@link RingModeSettings} for the {@link Profile}
+     * @return
+     */
     public RingModeSettings getRingMode() {
         return mRingMode;
     }
 
+    /**
+     * Set the {@link RingModeSettings} for the {@link Profile}
+     * @param descriptor
+     */
     public void setRingMode(RingModeSettings descriptor) {
         mRingMode = descriptor;
         mDirty = true;
     }
 
-    public int getScreenLockMode() {
+    /**
+     * Get the {@link LockSettings} for the {@link Profile}
+     * @return
+     */
+    public LockSettings getScreenLockMode() {
         return mScreenLockMode;
     }
 
-    public void setScreenLockMode(int screenLockMode) {
-        if (screenLockMode < LockMode.DEFAULT || screenLockMode > LockMode.DISABLE) {
-            mScreenLockMode = LockMode.DEFAULT;
-        } else {
-            mScreenLockMode = screenLockMode;
-        }
+    /**
+     * Set the {@link LockSettings} for the {@link Profile}
+     * @param screenLockMode
+     */
+    public void setScreenLockMode(LockSettings screenLockMode) {
+        mScreenLockMode = screenLockMode;
         mDirty = true;
     }
 
+    /**
+     * Get the {@link ExpandedDesktopMode} for the {@link Profile}
+     * @return
+     */
     public int getExpandedDesktopMode() {
         return mExpandedDesktopMode;
     }
 
+    /**
+     * Set the {@link ExpandedDesktopMode} for the {@link Profile}
+     * @return
+     */
     public void setExpandedDesktopMode(int expandedDesktopMode) {
         if (expandedDesktopMode < ExpandedDesktopMode.DEFAULT
                 || expandedDesktopMode > ExpandedDesktopMode.DISABLE) {
@@ -516,10 +861,18 @@ public final class Profile implements Parcelable, Comparable {
         mDirty = true;
     }
 
+    /**
+     * Get the {@link DozeMode} associated with the {@link Profile}
+     * @return
+     */
     public int getDozeMode() {
         return mDozeMode;
     }
 
+    /**
+     * Set the {@link DozeMode} associated with the {@link Profile}
+     * @return
+     */
     public void setDozeMode(int dozeMode) {
         if (dozeMode < DozeMode.DEFAULT
                 || dozeMode > DozeMode.DISABLE) {
@@ -530,19 +883,35 @@ public final class Profile implements Parcelable, Comparable {
         mDirty = true;
     }
 
+    /**
+     * Get the {@link AirplaneModeSettings} associated with the {@link Profile}
+     * @return
+     */
     public AirplaneModeSettings getAirplaneMode() {
         return mAirplaneMode;
     }
 
+    /**
+     * Set the {@link AirplaneModeSettings} associated with the {@link Profile}
+     * @param descriptor
+     */
     public void setAirplaneMode(AirplaneModeSettings descriptor) {
         mAirplaneMode = descriptor;
         mDirty = true;
     }
 
+    /**
+     * Get the {@link BrightnessSettings} associated with the {@link Profile}
+     * @return
+     */
     public BrightnessSettings getBrightness() {
         return mBrightness;
     }
 
+    /**
+     * Set the {@link BrightnessSettings} associated with the {@link Profile}
+     * @return
+     */
     public void setBrightness(BrightnessSettings descriptor) {
         mBrightness = descriptor;
         mDirty = true;
@@ -603,16 +972,18 @@ public final class Profile implements Parcelable, Comparable {
         builder.append("</uuids>\n");
 
         builder.append("<profiletype>");
-        builder.append(getProfileType() == TOGGLE_TYPE ? "toggle" : "conditional");
+        builder.append(getProfileType() == Type.TOGGLE ? "toggle" : "conditional");
         builder.append("</profiletype>\n");
 
         builder.append("<statusbar>");
         builder.append(getStatusBarIndicator() ? "yes" : "no");
         builder.append("</statusbar>\n");
 
-        builder.append("<screen-lock-mode>");
-        builder.append(mScreenLockMode);
-        builder.append("</screen-lock-mode>\n");
+        if (mScreenLockMode != null) {
+            builder.append("<screen-lock-mode>");
+            mScreenLockMode.writeXmlString(builder, context);
+            builder.append("</screen-lock-mode>\n");
+        }
 
         builder.append("<expanded-desktop-mode>");
         builder.append(mExpandedDesktopMode);
@@ -703,7 +1074,8 @@ public final class Profile implements Parcelable, Comparable {
         String profileName = null;
 
         if (value != null) {
-            profileNameResId = context.getResources().getIdentifier(value, "string", "android");
+            profileNameResId = context.getResources().getIdentifier(value, "string",
+                    "cyanogenmod.platform");
             if (profileNameResId > 0) {
                 profileName = context.getResources().getString(profileNameResId);
             }
@@ -745,7 +1117,7 @@ public final class Profile implements Parcelable, Comparable {
                 }
                 if (name.equals("profiletype")) {
                     profile.setProfileType(xpp.nextText().equals("toggle")
-                            ? TOGGLE_TYPE : CONDITIONAL_TYPE);
+                            ? Type.TOGGLE : Type.CONDITIONAL);
                 }
                 if (name.equals("ringModeDescriptor")) {
                     RingModeSettings smd = RingModeSettings.fromXml(xpp, context);
@@ -760,7 +1132,8 @@ public final class Profile implements Parcelable, Comparable {
                     profile.setBrightness(bd);
                 }
                 if (name.equals("screen-lock-mode")) {
-                    profile.setScreenLockMode(Integer.valueOf(xpp.nextText()));
+                    LockSettings lockMode = new LockSettings(Integer.valueOf(xpp.nextText()));
+                    profile.setScreenLockMode(lockMode);
                 }
                 if (name.equals("expanded-desktop-mode")) {
                     profile.setExpandedDesktopMode(Integer.valueOf(xpp.nextText()));
@@ -796,7 +1169,7 @@ public final class Profile implements Parcelable, Comparable {
     }
 
     /** @hide */
-    public void doSelect(Context context) {
+    public void doSelect(Context context, IKeyguardService keyguardService) {
         // Set stream volumes
         AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         for (StreamSettings sd : streams.values()) {
@@ -818,6 +1191,13 @@ public final class Profile implements Parcelable, Comparable {
         // Set brightness
         mBrightness.processOverride(context);
 
+        if (keyguardService != null) {
+            // Set lock screen mode
+            mScreenLockMode.processOverride(context, keyguardService);
+        } else {
+            Log.e(TAG, "cannot process screen lock override without a keyguard service.");
+        }
+
         // Set expanded desktop
         // if (mExpandedDesktopMode != ExpandedDesktopMode.DEFAULT) {
         //     Settings.System.putIntForUser(context.getContentResolver(),
@@ -835,35 +1215,52 @@ public final class Profile implements Parcelable, Comparable {
         }
     }
 
-    /** @hide */
+    /**
+     * Get the settings for a stream id in the {@link Profile}
+     * @return {@link StreamSettings}
+     */
     public StreamSettings getSettingsForStream(int streamId){
         return streams.get(streamId);
     }
 
-    /** @hide */
+    /**
+     * Set the {@link StreamSettings} for the {@link Profile}
+     * @param descriptor
+     */
     public void setStreamSettings(StreamSettings descriptor){
         streams.put(descriptor.getStreamId(), descriptor);
         mDirty = true;
     }
 
-    /** @hide */
+    /**
+     * Get the {@link StreamSettings} for the {@link Profile}
+     * @return {@link Collection<StreamSettings>}
+     */
     public Collection<StreamSettings> getStreamSettings(){
         return streams.values();
     }
 
-    /** @hide */
+    /**
+     * Get the settings for a connection id in the {@link Profile}
+     * @return {@link ConnectionSettings}
+     */
     public ConnectionSettings getSettingsForConnection(int connectionId){
         return connections.get(connectionId);
     }
 
-    /** @hide */
+    /**
+     * Set the {@link ConnectionSettings} for the {@link Profile}
+     * @param descriptor
+     */
     public void setConnectionSettings(ConnectionSettings descriptor){
         connections.put(descriptor.getConnectionId(), descriptor);
     }
 
-    /** @hide */
+    /**
+     * Get the {@link ConnectionSettings} for the {@link Profile}
+     * @return {@link Collection<ConnectionSettings>}
+     */
     public Collection<ConnectionSettings> getConnectionSettings(){
         return connections.values();
     }
-
 }

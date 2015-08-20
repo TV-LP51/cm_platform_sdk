@@ -1,3 +1,68 @@
+package cyanogenmod.alarmclock {
+
+  public final class ClockContract {
+    field public static final java.lang.String AUTHORITY = "com.android.deskclock";
+  }
+
+  public static abstract interface ClockContract.AlarmSettingColumns {
+    field public static final java.lang.String INCREASING_VOLUME = "incvol";
+    field public static final java.lang.String LABEL = "label";
+    field public static final java.lang.String NO_RINGTONE;
+    field public static final android.net.Uri NO_RINGTONE_URI;
+    field public static final java.lang.String PROFILE = "profile";
+    field public static final java.lang.String RINGTONE = "ringtone";
+    field public static final java.lang.String VIBRATE = "vibrate";
+  }
+
+  public static abstract interface ClockContract.AlarmsColumns implements cyanogenmod.alarmclock.ClockContract.AlarmSettingColumns {
+    field public static final android.net.Uri CONTENT_URI;
+    field public static final java.lang.String DAYS_OF_WEEK = "daysofweek";
+    field public static final java.lang.String DELETE_AFTER_USE = "delete_after_use";
+    field public static final java.lang.String ENABLED = "enabled";
+    field public static final java.lang.String HOUR = "hour";
+    field public static final java.lang.String MINUTES = "minutes";
+  }
+
+  public static abstract interface ClockContract.CitiesColumns {
+    field public static final java.lang.String CITY_ID = "city_id";
+    field public static final java.lang.String CITY_NAME = "city_name";
+    field public static final android.net.Uri CONTENT_URI;
+    field public static final java.lang.String TIMEZONE_NAME = "timezone_name";
+    field public static final java.lang.String TIMEZONE_OFFSET = "timezone_offset";
+  }
+
+  public static abstract interface ClockContract.InstancesColumns implements cyanogenmod.alarmclock.ClockContract.AlarmSettingColumns {
+    field public static final java.lang.String ALARM_ID = "alarm_id";
+    field public static final java.lang.String ALARM_STATE = "alarm_state";
+    field public static final android.net.Uri CONTENT_URI;
+    field public static final java.lang.String DAY = "day";
+    field public static final int DISMISSED_STATE = 7; // 0x7
+    field public static final int FIRED_STATE = 5; // 0x5
+    field public static final int HIDE_NOTIFICATION_STATE = 2; // 0x2
+    field public static final int HIGH_NOTIFICATION_STATE = 3; // 0x3
+    field public static final java.lang.String HOUR = "hour";
+    field public static final int LOW_NOTIFICATION_STATE = 1; // 0x1
+    field public static final java.lang.String MINUTES = "minutes";
+    field public static final int MISSED_STATE = 6; // 0x6
+    field public static final java.lang.String MONTH = "month";
+    field public static final int POWER_OFF_ALARM_STATE = -1; // 0xffffffff
+    field public static final int SILENT_STATE = 0; // 0x0
+    field public static final int SNOOZE_STATE = 4; // 0x4
+    field public static final java.lang.String YEAR = "year";
+  }
+
+  public class CyanogenModAlarmClock {
+    ctor public CyanogenModAlarmClock();
+    method public static android.content.Intent createAlarmIntent(android.content.Context);
+    field public static final java.lang.String ACTION_SET_ALARM_ENABLED = "cyanogenmod.alarmclock.SET_ALARM_ENABLED";
+    field public static final java.lang.String EXTRA_ALARM_ID = "cyanogenmod.intent.extra.alarmclock.ID";
+    field public static final java.lang.String EXTRA_ENABLED = "cyanogenmod.intent.extra.alarmclock.ENABLED";
+    field public static final java.lang.String MODIFY_ALARMS_PERMISSION = "cyanogenmod.alarmclock.permission.MODIFY_ALARMS";
+    field public static final java.lang.String READ_ALARMS_PERMISSION = "cyanogenmod.alarmclock.permission.READ_ALARMS";
+  }
+
+}
+
 package cyanogenmod.app {
 
   public class CMStatusBarManager {
@@ -10,6 +75,19 @@ package cyanogenmod.app {
     method public void removeTileAsUser(java.lang.String, int, android.os.UserHandle);
   }
 
+  public class CMTelephonyManager {
+    method public static cyanogenmod.app.CMTelephonyManager getInstance(android.content.Context);
+    method public java.util.List<android.telephony.SubscriptionInfo> getSubInformation();
+    method public boolean isDataConnectionEnabled();
+    method public boolean isDataConnectionSelectedOnSub(int);
+    method public boolean isSubActive(int);
+    method public void setDataConnectionState(boolean);
+    method public void setDefaultPhoneSub(int);
+    method public void setDefaultSmsSub(int);
+    method public void setSubState(int, boolean);
+    field public static final int ASK_FOR_SUBSCRIPTION_ID = 0; // 0x0
+  }
+
   public class CustomTile implements android.os.Parcelable {
     ctor public CustomTile(android.os.Parcel);
     ctor public CustomTile();
@@ -17,13 +95,17 @@ package cyanogenmod.app {
     method public int describeContents();
     method public void writeToParcel(android.os.Parcel, int);
     field public static final android.os.Parcelable.Creator<cyanogenmod.app.CustomTile> CREATOR;
+    field public static final int PSEUDO_GRID_ITEM_MAX_COUNT = 9; // 0x9
+    field public boolean collapsePanel;
     field public java.lang.String contentDescription;
+    field public android.app.PendingIntent deleteIntent;
     field public cyanogenmod.app.CustomTile.ExpandedStyle expandedStyle;
     field public int icon;
     field public java.lang.String label;
     field public android.app.PendingIntent onClick;
     field public android.net.Uri onClickUri;
     field public android.content.Intent onSettingsClick;
+    field public android.graphics.Bitmap remoteIcon;
   }
 
   public static class CustomTile.Builder {
@@ -31,17 +113,21 @@ package cyanogenmod.app {
     method public cyanogenmod.app.CustomTile build();
     method public cyanogenmod.app.CustomTile.Builder setContentDescription(java.lang.String);
     method public cyanogenmod.app.CustomTile.Builder setContentDescription(int);
+    method public cyanogenmod.app.CustomTile.Builder setDeleteIntent(android.app.PendingIntent);
     method public cyanogenmod.app.CustomTile.Builder setExpandedStyle(cyanogenmod.app.CustomTile.ExpandedStyle);
     method public cyanogenmod.app.CustomTile.Builder setIcon(int);
+    method public cyanogenmod.app.CustomTile.Builder setIcon(android.graphics.Bitmap);
     method public cyanogenmod.app.CustomTile.Builder setLabel(java.lang.String);
     method public cyanogenmod.app.CustomTile.Builder setLabel(int);
     method public cyanogenmod.app.CustomTile.Builder setOnClickIntent(android.app.PendingIntent);
     method public cyanogenmod.app.CustomTile.Builder setOnClickUri(android.net.Uri);
     method public cyanogenmod.app.CustomTile.Builder setOnSettingsClickIntent(android.content.Intent);
+    method public cyanogenmod.app.CustomTile.Builder shouldCollapsePanel(boolean);
   }
 
   public static class CustomTile.ExpandedGridItem extends cyanogenmod.app.CustomTile.ExpandedItem {
     ctor public CustomTile.ExpandedGridItem();
+    method public void setExpandedGridItemBitmap(android.graphics.Bitmap);
     method public void setExpandedGridItemDrawable(int);
     method public void setExpandedGridItemOnClickIntent(android.app.PendingIntent);
     method public void setExpandedGridItemTitle(java.lang.String);
@@ -52,6 +138,7 @@ package cyanogenmod.app {
     method public int describeContents();
     method public void writeToParcel(android.os.Parcel, int);
     field public static final android.os.Parcelable.Creator<cyanogenmod.app.CustomTile.ExpandedItem> CREATOR;
+    field public android.graphics.Bitmap itemBitmapResource;
     field public int itemDrawableResourceId;
     field public java.lang.String itemSummary;
     field public java.lang.String itemTitle;
@@ -60,6 +147,7 @@ package cyanogenmod.app {
 
   public static class CustomTile.ExpandedListItem extends cyanogenmod.app.CustomTile.ExpandedItem {
     ctor public CustomTile.ExpandedListItem();
+    method public void setExpandedListItemBitmap(android.graphics.Bitmap);
     method public void setExpandedListItemDrawable(int);
     method public void setExpandedListItemOnClickIntent(android.app.PendingIntent);
     method public void setExpandedListItemSummary(java.lang.String);
@@ -68,12 +156,14 @@ package cyanogenmod.app {
 
   public static class CustomTile.ExpandedStyle implements android.os.Parcelable {
     method public int describeContents();
+    method public android.widget.RemoteViews getContentViews();
     method public cyanogenmod.app.CustomTile.ExpandedItem[] getExpandedItems();
     method public int getStyle();
     method public void writeToParcel(android.os.Parcel, int);
     field public static final android.os.Parcelable.Creator<cyanogenmod.app.CustomTile.ExpandedStyle> CREATOR;
     field public static final int GRID_STYLE = 0; // 0x0
     field public static final int LIST_STYLE = 1; // 0x1
+    field public static final int REMOTE_STYLE = 2; // 0x2
   }
 
   public static class CustomTile.GridExpandedStyle extends cyanogenmod.app.CustomTile.ExpandedStyle {
@@ -86,6 +176,11 @@ package cyanogenmod.app {
     method public void setListItems(java.util.ArrayList<cyanogenmod.app.CustomTile.ExpandedListItem>);
   }
 
+  public static class CustomTile.RemoteExpandedStyle extends cyanogenmod.app.CustomTile.ExpandedStyle {
+    ctor public CustomTile.RemoteExpandedStyle();
+    method public void setRemoteViews(android.widget.RemoteViews);
+  }
+
   public class CustomTileListenerService extends android.app.Service {
     ctor public CustomTileListenerService();
     method public android.os.IBinder onBind(android.content.Intent);
@@ -94,6 +189,143 @@ package cyanogenmod.app {
     method public void onListenerConnected();
     method public final void removeCustomTile(java.lang.String, java.lang.String, int);
     field public static final java.lang.String SERVICE_INTERFACE = "cyanogenmod.app.CustomTileListenerService";
+  }
+
+  public final class Profile implements android.os.Parcelable {
+    ctor public Profile(java.lang.String);
+    method public void addSecondaryUuid(java.util.UUID);
+    method public int compareTo(java.lang.Object);
+    method public int describeContents();
+    method public cyanogenmod.profiles.AirplaneModeSettings getAirplaneMode();
+    method public cyanogenmod.profiles.BrightnessSettings getBrightness();
+    method public java.util.Collection<cyanogenmod.profiles.ConnectionSettings> getConnectionSettings();
+    method public int getDozeMode();
+    method public int getExpandedDesktopMode();
+    method public java.lang.String getName();
+    method public int getProfileType();
+    method public cyanogenmod.profiles.RingModeSettings getRingMode();
+    method public cyanogenmod.profiles.LockSettings getScreenLockMode();
+    method public java.util.UUID[] getSecondaryUuids();
+    method public cyanogenmod.profiles.ConnectionSettings getSettingsForConnection(int);
+    method public cyanogenmod.profiles.StreamSettings getSettingsForStream(int);
+    method public java.util.Collection<cyanogenmod.profiles.StreamSettings> getStreamSettings();
+    method public int getTriggerState(int, java.lang.String);
+    method public java.util.ArrayList<cyanogenmod.app.Profile.ProfileTrigger> getTriggersFromType(int);
+    method public java.util.UUID getUuid();
+    method public boolean isConditionalType();
+    method public void setAirplaneMode(cyanogenmod.profiles.AirplaneModeSettings);
+    method public void setBrightness(cyanogenmod.profiles.BrightnessSettings);
+    method public void setConnectionSettings(cyanogenmod.profiles.ConnectionSettings);
+    method public void setDozeMode(int);
+    method public void setExpandedDesktopMode(int);
+    method public void setName(java.lang.String);
+    method public void setProfileType(int);
+    method public void setRingMode(cyanogenmod.profiles.RingModeSettings);
+    method public void setScreenLockMode(cyanogenmod.profiles.LockSettings);
+    method public void setSecondaryUuids(java.util.List<java.util.UUID>);
+    method public void setStreamSettings(cyanogenmod.profiles.StreamSettings);
+    method public void setTrigger(cyanogenmod.app.Profile.ProfileTrigger);
+    method public void writeToParcel(android.os.Parcel, int);
+  }
+
+  public static class Profile.DozeMode {
+    ctor public Profile.DozeMode();
+    field public static final int DEFAULT = 0; // 0x0
+    field public static final int DISABLE = 2; // 0x2
+    field public static final int ENABLE = 1; // 0x1
+  }
+
+  public static class Profile.ExpandedDesktopMode {
+    ctor public Profile.ExpandedDesktopMode();
+    field public static final int DEFAULT = 0; // 0x0
+    field public static final int DISABLE = 2; // 0x2
+    field public static final int ENABLE = 1; // 0x1
+  }
+
+  public static class Profile.LockMode {
+    ctor public Profile.LockMode();
+    field public static final int DEFAULT = 0; // 0x0
+    field public static final int DISABLE = 2; // 0x2
+    field public static final int INSECURE = 1; // 0x1
+  }
+
+  public static class Profile.ProfileTrigger implements android.os.Parcelable {
+    ctor public Profile.ProfileTrigger(int, java.lang.String, int, java.lang.String);
+    method public int describeContents();
+    method public java.lang.String getId();
+    method public java.lang.String getName();
+    method public int getState();
+    method public int getType();
+    method public void writeToParcel(android.os.Parcel, int);
+  }
+
+  public static class Profile.TriggerState {
+    ctor public Profile.TriggerState();
+    field public static final int DISABLED = 2; // 0x2
+    field public static final int ON_A2DP_CONNECT = 3; // 0x3
+    field public static final int ON_A2DP_DISCONNECT = 4; // 0x4
+    field public static final int ON_CONNECT = 0; // 0x0
+    field public static final int ON_DISCONNECT = 1; // 0x1
+  }
+
+  public static class Profile.TriggerType {
+    ctor public Profile.TriggerType();
+    field public static final int BLUETOOTH = 1; // 0x1
+    field public static final int WIFI = 0; // 0x0
+  }
+
+  public static class Profile.Type {
+    ctor public Profile.Type();
+    field public static final int CONDITIONAL = 1; // 0x1
+    field public static final int TOGGLE = 0; // 0x0
+  }
+
+  public class ProfileManager {
+    method public void addProfile(cyanogenmod.app.Profile);
+    method public cyanogenmod.app.Profile getActiveProfile();
+    method public static cyanogenmod.app.ProfileManager getInstance(android.content.Context);
+    method public deprecated cyanogenmod.app.Profile getProfile(java.lang.String);
+    method public cyanogenmod.app.Profile getProfile(java.util.UUID);
+    method public java.lang.String[] getProfileNames();
+    method public cyanogenmod.app.Profile[] getProfiles();
+    method public boolean profileExists(java.lang.String);
+    method public boolean profileExists(java.util.UUID);
+    method public void removeProfile(cyanogenmod.app.Profile);
+    method public void resetAll();
+    method public deprecated void setActiveProfile(java.lang.String);
+    method public void setActiveProfile(java.util.UUID);
+    method public void updateProfile(cyanogenmod.app.Profile);
+    field public static final java.lang.String ACTION_PROFILE_PICKER = "cyanogenmod.platform.intent.action.PROFILE_PICKER";
+    field public static final java.lang.String EXTRA_LAST_PROFILE_NAME = "lastName";
+    field public static final java.lang.String EXTRA_LAST_PROFILE_UUID = "uuid";
+    field public static final java.lang.String EXTRA_PROFILES_STATE = "profile_state";
+    field public static final java.lang.String EXTRA_PROFILE_DIALOG_THEME = "cyanogenmod.platform.intent.extra.profile.DIALOG_THEME";
+    field public static final java.lang.String EXTRA_PROFILE_EXISTING_UUID = "cyanogenmod.platform.extra.profile.EXISTING_UUID";
+    field public static final java.lang.String EXTRA_PROFILE_NAME = "name";
+    field public static final java.lang.String EXTRA_PROFILE_PICKED_UUID = "cyanogenmod.platform.intent.extra.profile.PICKED_UUID";
+    field public static final java.lang.String EXTRA_PROFILE_SHOW_NONE = "cyanogenmod.platform.intent.extra.profile.SHOW_NONE";
+    field public static final java.lang.String EXTRA_PROFILE_TITLE = "cyanogenmod.platform.intent.extra.profile.TITLE";
+    field public static final java.lang.String EXTRA_PROFILE_UUID = "uuid";
+    field public static final java.lang.String INTENT_ACTION_PROFILE_SELECTED = "cyanogenmod.platform.intent.action.PROFILE_SELECTED";
+    field public static final java.lang.String INTENT_ACTION_PROFILE_UPDATED = "cyanogenmod.platform.intent.action.PROFILE_UPDATED";
+    field public static final java.util.UUID NO_PROFILE;
+    field public static final java.lang.String PROFILES_STATE_CHANGED_ACTION = "cyanogenmod.platform.app.profiles.PROFILES_STATE_CHANGED";
+    field public static final int PROFILES_STATE_DISABLED = 0; // 0x0
+    field public static final int PROFILES_STATE_ENABLED = 1; // 0x1
+  }
+
+  public class SettingsManager {
+    method public static cyanogenmod.app.SettingsManager getInstance(android.content.Context);
+    method public void rebootDevice();
+    method public void setAirplaneModeEnabled(boolean);
+    method public void setMobileDataEnabled(boolean);
+    method public boolean setZenMode(int);
+    method public void shutdownDevice();
+    field public static final java.lang.String MODIFY_NETWORK_SETTINGS_PERMISSION = "cyanogenmod.permission.MODIFY_NETWORK_SETTINGS";
+    field public static final java.lang.String MODIFY_SOUND_SETTINGS_PERMISSION = "cyanogenmod.permission.MODIFY_SOUND_SETTINGS";
+    field public static final int ZEN_MODE_IMPORTANT_INTERRUPTIONS = 1; // 0x1
+    field public static final int ZEN_MODE_NO_INTERRUPTIONS = 2; // 0x2
+    field public static final int ZEN_MODE_OFF = 0; // 0x0
   }
 
   public class StatusBarPanelCustomTile implements android.os.Parcelable {
@@ -132,6 +364,7 @@ package cyanogenmod.os {
   public static class Build.CM_VERSION_CODES {
     ctor public Build.CM_VERSION_CODES();
     field public static final int APRICOT = 1; // 0x1
+    field public static final int BOYSENBERRY = 2; // 0x2
   }
 
 }
@@ -144,7 +377,11 @@ package cyanogenmod.platform {
 
   public static final class Manifest.permission {
     ctor public Manifest.permission();
+    field public static final java.lang.String MODIFY_MSIM_PHONE_STATE = "cyanogenmod.permission.MODIFY_MSIM_PHONE_STATE";
+    field public static final java.lang.String MODIFY_NETWORK_SETTINGS = "cyanogenmod.permission.MODIFY_NETWORK_SETTINGS";
+    field public static final java.lang.String MODIFY_SOUND_SETTINGS = "cyanogenmod.permission.MODIFY_SOUND_SETTINGS";
     field public static final java.lang.String PUBLISH_CUSTOM_TILE = "cyanogenmod.permission.PUBLISH_CUSTOM_TILE";
+    field public static final java.lang.String READ_MSIM_PHONE_STATE = "cyanogenmod.permission.READ_MSIM_PHONE_STATE";
   }
 
   public final class R {
@@ -155,8 +392,116 @@ package cyanogenmod.platform {
     ctor public R.attr();
   }
 
+  public static final class R.drawable {
+    ctor public R.drawable();
+  }
+
   public static final class R.string {
     ctor public R.string();
+  }
+
+  public static final class R.xml {
+    ctor public R.xml();
+  }
+
+}
+
+package cyanogenmod.profiles {
+
+  public final class AirplaneModeSettings implements android.os.Parcelable {
+    ctor public AirplaneModeSettings(android.os.Parcel);
+    ctor public AirplaneModeSettings();
+    ctor public AirplaneModeSettings(int, boolean);
+    method public int describeContents();
+    method public int getValue();
+    method public boolean isOverride();
+    method public void setOverride(boolean);
+    method public void setValue(int);
+    method public void writeToParcel(android.os.Parcel, int);
+  }
+
+  public static class AirplaneModeSettings.BooleanState {
+    ctor public AirplaneModeSettings.BooleanState();
+    field public static final int STATE_DISALED = 0; // 0x0
+    field public static final int STATE_ENABLED = 1; // 0x1
+  }
+
+  public final class BrightnessSettings implements android.os.Parcelable {
+    ctor public BrightnessSettings(android.os.Parcel);
+    ctor public BrightnessSettings();
+    ctor public BrightnessSettings(int, boolean);
+    method public int describeContents();
+    method public int getValue();
+    method public boolean isOverride();
+    method public void setOverride(boolean);
+    method public void setValue(int);
+    method public void writeToParcel(android.os.Parcel, int);
+  }
+
+  public final class ConnectionSettings implements android.os.Parcelable {
+    ctor public ConnectionSettings(android.os.Parcel);
+    ctor public ConnectionSettings(int);
+    ctor public ConnectionSettings(int, int, boolean);
+    method public int describeContents();
+    method public int getConnectionId();
+    method public int getValue();
+    method public boolean isOverride();
+    method public void setOverride(boolean);
+    method public void setValue(int);
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final int PROFILE_CONNECTION_2G3G4G = 9; // 0x9
+    field public static final int PROFILE_CONNECTION_BLUETOOTH = 7; // 0x7
+    field public static final int PROFILE_CONNECTION_GPS = 4; // 0x4
+    field public static final int PROFILE_CONNECTION_MOBILEDATA = 0; // 0x0
+    field public static final int PROFILE_CONNECTION_NFC = 8; // 0x8
+    field public static final int PROFILE_CONNECTION_SYNC = 5; // 0x5
+    field public static final int PROFILE_CONNECTION_WIFI = 1; // 0x1
+    field public static final int PROFILE_CONNECTION_WIFIAP = 2; // 0x2
+    field public static final int PROFILE_CONNECTION_WIMAX = 3; // 0x3
+  }
+
+  public static class ConnectionSettings.BooleanState {
+    ctor public ConnectionSettings.BooleanState();
+    field public static final int STATE_DISALED = 0; // 0x0
+    field public static final int STATE_ENABLED = 1; // 0x1
+  }
+
+  public final class LockSettings implements android.os.Parcelable {
+    ctor public LockSettings(android.os.Parcel);
+    ctor public LockSettings();
+    ctor public LockSettings(int);
+    method public int describeContents();
+    method public int getValue();
+    method public void setValue(int);
+    method public void writeToParcel(android.os.Parcel, int);
+  }
+
+  public final class RingModeSettings implements android.os.Parcelable {
+    ctor public RingModeSettings(android.os.Parcel);
+    ctor public RingModeSettings();
+    ctor public RingModeSettings(java.lang.String, boolean);
+    method public int describeContents();
+    method public java.lang.String getValue();
+    method public boolean isOverride();
+    method public void setOverride(boolean);
+    method public void setValue(java.lang.String);
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final java.lang.String RING_MODE_MUTE = "mute";
+    field public static final java.lang.String RING_MODE_NORMAL = "normal";
+    field public static final java.lang.String RING_MODE_VIBRATE = "vibrate";
+  }
+
+  public final class StreamSettings implements android.os.Parcelable {
+    ctor public StreamSettings(android.os.Parcel);
+    ctor public StreamSettings(int);
+    ctor public StreamSettings(int, int, boolean);
+    method public int describeContents();
+    method public int getStreamId();
+    method public int getValue();
+    method public boolean isOverride();
+    method public void setOverride(boolean);
+    method public void setValue(int);
+    method public void writeToParcel(android.os.Parcel, int);
   }
 
 }
