@@ -41,7 +41,7 @@ public class CMStatusBarManagerTest extends AndroidTestCase {
 
     @SmallTest
     public void testManagerServiceIsAvailable() {
-        ICMStatusBarManager icmStatusBarManager = mCMStatusBarManager.getService();
-        assertNotNull(icmStatusBarManager);
+        ICMStatusBarManager icmHardwareManagerService = mCMStatusBarManager.getService();
+        assertNotNull(icmHardwareManagerService);
     }
 }
